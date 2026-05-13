@@ -1,9 +1,7 @@
 import { k8sCoreV1Api } from "./config.js";
 
-
 export async function createPod(sandboxId) {
 
-    //! pod manifest is the configuration of the pod to be created
     const podManifest = {
         metadata: {
             name: `sandbox-pod-${sandboxId}`,
@@ -12,22 +10,29 @@ export async function createPod(sandboxId) {
                 sandboxId: sandboxId
             }
         },
+
         spec: {
             containers: [
                 {
                     name: "sandbox",
-                    // its for github codesapce in local will be changed
-                    imagesPullPolicy: "Never",
+
                     image: "template:latest",
+
+                    imagePullPolicy: "Never",
+
                     ports: [
-                        // tcp for the github codesapce
-                        { containerPort: 5173, name: ["http", "tcp", "https"] }
+                        {
+                            containerPort: 5173,
+                            name: "http"
+                        }
                     ],
-                    resoures: {
+
+                    resources: {
                         limits: {
                             cpu: "100m",
                             memory: "128Mi"
                         },
+
                         requests: {
                             cpu: "100m",
                             memory: "128Mi"
@@ -38,15 +43,10 @@ export async function createPod(sandboxId) {
         }
     };
 
-    //! now create the pod 
-
-    const res = await k8sCoreV1Api.createNamespacedPod({
+    const response = await k8sCoreV1Api.createNamespacedPod({
         namespace: "default",
         body: podManifest
     });
 
-    // now return the response
-    return res;
+    return response;
 }
-
-
