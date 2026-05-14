@@ -1,44 +1,58 @@
+# k8s/deployment.yml
+
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
-  name:  sandbox-deployment
-  labels:
-    name:  sandbox-deployment
+  name: sandbox-deployment
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: sandbox
+
   template:
     metadata:
       labels:
         app: sandbox
+
     spec:
       serviceAccountName: resource-manager
+
       containers:
-      - image:  sandbox:latest
-        imagePullPolicy: Never
-        name:  main-sandbox-container
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "400Mi"
-          requests:
-            cpu: "250m"
-            memory: "200Mi"
-        livenessProbe:
-          httpGet:
-            path: /api/sandbox/health
-            port: 3000
-          initialDelaySeconds: 90
-          timeoutSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /api/sandbox/health
-            port: 3000
-          initialDelaySeconds: 30
-          timeoutSeconds: 10      
-        ports:
-        - containerPort:  3000
-          name:  main-sandbox
-      
+        - name: main-sandbox-container
+          image: sandbox:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 3000
+              name: http
+
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "400Mi"
+
+            requests:
+              cpu: "250m"
+              memory: "200Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /api/sandbox/health
+              port: 3000
+
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /api/sandbox/health
+              port: 3000
+
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10

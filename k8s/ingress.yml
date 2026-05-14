@@ -1,18 +1,26 @@
+# k8s/ingress.yml
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
+
 metadata:
   name: codespace-ingress
-  labels:
-    app.kubernetes.io/name: codespace-ingress
+
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
 spec:
   ingressClassName: nginx
+
   rules:
-  - http:
-      paths:
-      - pathType: Prefix
-        path: "/api/sandbox"
-        backend:
-          service:
-            name: sandbox-service
-            port: 
-              number: 80
+    - http:
+        paths:
+          - path: /api/sandbox
+            pathType: Prefix
+
+            backend:
+              service:
+                name: sandbox-service
+
+                port:
+                  number: 80

@@ -17,7 +17,7 @@ app.get('/api/sandbox/health', (req, res) => {
     });
 });
 
-app.post('/api/sandbox/start', async () => {
+app.post('/api/sandbox/start', async (req,res) => {
     const sandboxId = uuid();
 
     await Promise.all([

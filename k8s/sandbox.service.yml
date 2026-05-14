@@ -1,12 +1,19 @@
-kind: Service
+# k8s/service.yml
+
 apiVersion: v1
+kind: Service
+
 metadata:
-  name:  sandbox-service
+  name: sandbox-service
+
 spec:
   selector:
-    app:  sandbox
-  type: NodePort
+    app: sandbox
+
+  type: ClusterIP
+
   ports:
-  - name:  main-sandbox-port
-    port:  80
-    targetPort:  3000
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
