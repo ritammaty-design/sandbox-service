@@ -1,5 +1,3 @@
-# k8s/ingress.yml
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 
@@ -13,6 +11,8 @@ spec:
   ingressClassName: nginx
 
   rules:
+
+    # Main API routes
     - http:
         paths:
           - path: /api/sandbox
@@ -21,6 +21,21 @@ spec:
             backend:
               service:
                 name: sandbox-service
+
+                port:
+                  number: 80
+
+    # Preview wildcard routes
+    - host: "*.preview.localhost"
+
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+
+            backend:
+              service:
+                name: router-service
 
                 port:
                   number: 80
