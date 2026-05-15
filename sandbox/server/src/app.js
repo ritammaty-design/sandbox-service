@@ -30,7 +30,7 @@ app.post('/api/sandbox/start', async (req, res) => {
         message: 'Sandbox started',
         sandboxId,
 
-        previewUrl: `${req.protocol}://${req.get('host')}/preview/${sandboxId}`
+        previewUrl: `https://shiny-space-capybara-wrp6pw9gwgj6hg5gr-3000.app.github.dev/preview/${sandboxId}`
     });
 
 });
