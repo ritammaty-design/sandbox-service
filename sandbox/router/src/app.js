@@ -18,27 +18,15 @@ app.get('/api/status/readyz', (req, res) => {
 
 
 app.use('/preview/:sandboxId', (req, res, next) => {
-
     const sandboxId = req.params.sandboxId;
-
     const target = `http://sandbox-service-${sandboxId}:80`;
 
     return createProxyMiddleware({
         target,
         changeOrigin: true,
         ws: true,
-
-        pathRewrite: (path, req) => {
-            return path.replace(`/preview/${sandboxId}`, '');
-        },
-
-        logLevel: 'debug',
-
-        onError(err, req, res) {
-            console.error('Proxy Error:', err.message);
-        }
-
+        // We REMOVE pathRewrite. Let Vite handle the full path.
+        logLevel: 'debug'
     })(req, res, next);
-
 });
 export default app
