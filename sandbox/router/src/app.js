@@ -16,19 +16,23 @@ app.get('/api/status/readyz', (req, res) => {
  */
 
 app.use('/preview/:sandboxId', (req, res, next) => {
+  const sandboxId = req.params.sandboxId
+  const target = `http://sandbox-service-${sandboxId}:80`
 
-    const sandboxId = req.params.sandboxId;
-
-    const target = `http://sandbox-service-${sandboxId}`;
-
-    return createProxyMiddleware({
-        target,
-        changeOrigin: true,
-        ws: true,
-        pathRewrite: {
-            [`^/preview/${sandboxId}`]: '/',
-        }
-    })(req, res, next);
-
-});
+  return createProxyMiddleware({
+    target,
+    changeOrigin: true,
+    ws: true,
+    pathRewrite: {
+      [`^/preview/${sandboxId}`]: ''
+    },
+    onError(err, req, res) {
+      console.error('preview proxy error:', err.message)
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'preview proxy error', message: err.message })
+      }
+    }
+  })(req, res, next)
+})
 export default app
+

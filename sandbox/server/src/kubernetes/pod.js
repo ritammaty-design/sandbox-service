@@ -44,9 +44,28 @@ export async function createPod(sandboxId) {
     };
 
     const response = await k8sCoreV1Api.createNamespacedPod({
-        namespace: "default",
+        namespace: 'default',
         body: podManifest
     });
 
     return response;
+}
+
+export async function waitForPodReady(sandboxId, timeoutMs = 120000) {
+    const podName = `sandbox-pod-${sandboxId}`
+    const deadline = Date.now() + timeoutMs
+
+    while (Date.now() < deadline) {
+        const { body } = await k8sCoreV1Api.readNamespacedPodStatus(podName, 'default')
+        const conditions = body.status?.conditions || []
+        const ready = conditions.some((condition) => condition.type === 'Ready' && condition.status === 'True')
+
+        if (ready) {
+            return body
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+    }
+
+    throw new Error(`Sandbox pod ${podName} did not become ready within ${timeoutMs}ms`)
 }

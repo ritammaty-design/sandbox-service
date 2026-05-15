@@ -1,10 +1,10 @@
-import express from 'express';
-import morgan from 'morgan';
-import { createPod } from './kubernetes/pod.js';
-import { createService } from './kubernetes/service.js';
+import express from 'express'
+import morgan from 'morgan'
+import { createPod, waitForPodReady } from './kubernetes/pod.js'
+import { createService } from './kubernetes/service.js'
 import { v7 as uuid } from 'uuid'
 
-const app = express();
+const app = express()
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -18,20 +18,19 @@ app.get('/api/sandbox/health', (req, res) => {
 });
 
 app.post('/api/sandbox/start', async (req, res) => {
+  const sandboxId = uuid()
 
-    const sandboxId = uuid();
+  await createPod(sandboxId)
+  await createService(sandboxId)
+  await waitForPodReady(sandboxId)
 
-    await Promise.all([
-        createPod(sandboxId),
-        createService(sandboxId)
-    ]);
+  const previewBaseUrl = process.env.PREVIEW_BASE_URL || 'http://localhost:3000'
 
-    return res.status(200).json({
-        message: 'Sandbox started',
-        sandboxId,
-
-        previewUrl: `https://shiny-space-capybara-wrp6pw9gwgj6hg5gr-3000.app.github.dev/preview/${sandboxId}`
-    });
-
-});
+  return res.status(200).json({
+    message: 'Sandbox started',
+    sandboxId,
+    previewUrl: `${previewBaseUrl}/preview/${sandboxId}`
+  })
+})
 export default app;
+
