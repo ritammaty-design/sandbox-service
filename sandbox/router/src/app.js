@@ -26,7 +26,7 @@ app.use('/preview/:sandboxId', (req, res, next) => {
         changeOrigin: true,
         ws: true,
         pathRewrite: {
-            [`^/preview/${sandboxId}`]: ''
+            [`^/preview/${sandboxId}`]: '/',
         }
     })(req, res, next);
 
