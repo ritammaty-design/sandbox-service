@@ -2,12 +2,14 @@ import { k8sCoreV1Api } from "./config.js";
 
 export async function createPod(sandboxId) {
 
+    const podName = `sandbox-pod-${sandboxId}`;
+
     const podManifest = {
         metadata: {
-            name: `sandbox-pod-${sandboxId}`,
+            name: podName,
             labels: {
                 app: "sandbox",
-                sandboxId: sandboxId
+                sandboxId
             }
         },
 
@@ -25,47 +27,41 @@ export async function createPod(sandboxId) {
                             containerPort: 5173,
                             name: "http"
                         }
-                    ],
-
-                    resources: {
-                        limits: {
-                            cpu: "100m",
-                            memory: "128Mi"
-                        },
-
-                        requests: {
-                            cpu: "100m",
-                            memory: "128Mi"
-                        }
-                    }
+                    ]
                 }
             ]
         }
     };
 
-    const response = await k8sCoreV1Api.createNamespacedPod({
-        namespace: 'default',
+    await k8sCoreV1Api.createNamespacedPod({
+        namespace: "default",
         body: podManifest
     });
 
-    return response;
+    return podName;
 }
 
-export async function waitForPodReady(sandboxId, timeoutMs = 120000) {
-    const podName = `sandbox-pod-${sandboxId}`
-    const deadline = Date.now() + timeoutMs
+export async function waitForPodReady(podName) {
 
-    while (Date.now() < deadline) {
-        const { body } = await k8sCoreV1Api.readNamespacedPodStatus(podName, 'default')
-        const conditions = body.status?.conditions || []
-        const ready = conditions.some((condition) => condition.type === 'Ready' && condition.status === 'True')
+    while (true) {
 
-        if (ready) {
-            return body
+        const response = await k8sCoreV1Api.readNamespacedPodStatus({
+            name: podName,
+            namespace: "default"
+        });
+
+        const pod = response;
+
+        const conditions = pod.status?.conditions || [];
+
+        const readyCondition = conditions.find(
+            condition => condition.type === "Ready"
+        );
+
+        if (readyCondition?.status === "True") {
+            break;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
-
-    throw new Error(`Sandbox pod ${podName} did not become ready within ${timeoutMs}ms`)
 }
