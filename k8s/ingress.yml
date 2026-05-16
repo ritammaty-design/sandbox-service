@@ -2,40 +2,32 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: codespace-ingress
-
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+  name: sandbox-ingress
 
 spec:
   ingressClassName: nginx
 
   rules:
 
-    # Main API routes
+    # Backend API
     - http:
         paths:
-          - path: /api/sandbox
+
+          - path: /api
             pathType: Prefix
 
             backend:
               service:
                 name: sandbox-service
-
                 port:
                   number: 80
 
-    # Preview wildcard routes
-    - host: "*.preview.localhost"
-
-      http:
-        paths:
-          - path: /
+          # Preview router
+          - path: /preview
             pathType: Prefix
 
             backend:
               service:
                 name: router-service
-
                 port:
                   number: 80
