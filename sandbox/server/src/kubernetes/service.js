@@ -14,14 +14,14 @@ export async function createService(sandboxId) {
 
         spec: {
             selector: {
-                app: "sandbox",
+                app: "sandbox-instance",
                 sandboxId: sandboxId
             },
 
             ports: [
                 {
                     port: 80,
-                    targetPort: 5173,
+                    targetPort: 80,
                     protocol: "TCP",
                     name: "http"
                 }
