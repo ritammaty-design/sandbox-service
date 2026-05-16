@@ -11,14 +11,13 @@ COPY . .
 RUN npm run build
 
 
-FROM node:20-alpine
+FROM nginx:alpine
 
-WORKDIR /app
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-RUN npm install -g serve
+# FOR DEBUGGING
+COPY --from=builder /app /app
 
-COPY --from=builder /app/dist ./dist
+EXPOSE 80
 
-EXPOSE 5173
-
-CMD ["serve", "-s", "dist", "-l", "5173"]
+CMD ["nginx", "-g", "daemon off;"]
