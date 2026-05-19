@@ -1,295 +1,179 @@
-# GitHub Codespaces + Docker + Kind + Kubernetes Setup Guide
+# GITHUB CODESPACES SANDBOX STARTUP GUIDE
 
-## 1. Open Codespace
+## BEFORE CLOSING GITHUB CODESPACE
 
-Open your GitHub Codespace.
+Run this cleanup command:
+
+```bash id="4m9t8q"
+kubectl delete pod -l app=sandbox-instance --ignore-not-found && kubectl delete svc -l app=sandbox-instance --ignore-not-found
+```
 
 ---
 
-# 2. Install Docker
+# AFTER REOPENING CODESPACE (FULL START FROM SCRATCH)
 
-Check Docker:
+## 1. Start Docker
 
-```bash id="m1q8zt"
-docker --version
-```
-
-If not installed:
-
-```bash id="v7p3rk"
-sudo apt update
-sudo apt install docker.io -y
-```
-
-Start Docker:
-
-```bash id="x2n5lf"
+```bash id="6w2x1p"
 sudo service docker start
 ```
 
-Check:
+---
 
-```bash id="r4m7qp"
-docker ps
+## 2. Start Kind Cluster
+
+```bash id="7r5v9m"
+kind create cluster --name sandbox
+```
+
+If already exists:
+
+```bash id="0p8n4k"
+kind get clusters
 ```
 
 ---
 
-# 3. Install kubectl
+## 3. Build All Docker Images
 
-Check:
-
-```bash id="k8v1tm"
-kubectl version --client
-```
-
-If not installed:
-
-```bash id="f5q2wn"
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
+```bash id="3q7x6z"
+docker build -t sandbox:latest ./sandbox/server && docker build -t router:latest ./sandbox/router && docker build -t template:latest ./sandbox/template && docker build -t agent:latest ./sandbox/agent
 ```
 
 ---
 
-# 4. Install Kind
+## 4. Load Images Into Kind
 
-Check:
-
-```bash id="z9p4xm"
-kind version
-```
-
-If not installed:
-
-```bash id="c7r1vk"
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
+```bash id="5m1c8v"
+kind load docker-image sandbox:latest --name sandbox && kind load docker-image router:latest --name sandbox && kind load docker-image template:latest --name sandbox && kind load docker-image agent:latest --name sandbox
 ```
 
 ---
 
-# 5. Create Kubernetes Cluster
+## 5. Apply Kubernetes Files
 
-```bash id="t3m8ql"
-kind create cluster
+```bash id="2v9k4r"
+kubectl apply -f kubernetes/
 ```
 
-Check:
+OR if separate files:
 
-```bash id="u6n2pf"
-kubectl cluster-info
-```
-
----
-
-# 6. Install NGINX Ingress
-
-```bash id="j1w5rz"
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-```
-
-Wait:
-
-```bash id="h8q3vn"
-kubectl get pods -n ingress-nginx -w
-```
-
-Wait until:
-
-```txt id="y2p7mk"
-Running
-```
-
----
-
-# 7. Backend Docker Build
-
-Go backend folder:
-
-```bash id="l4x8qt"
-cd sandbox/server
-```
-
-Build image:
-
-```bash id="n6m1rv"
-docker build -t sandbox:latest .
-```
-
-Load into kind:
-
-```bash id="p3v7zk"
-kind load docker-image sandbox:latest
-```
-
----
-
-# 8. Frontend Docker Build
-
-Go template folder:
-
-```bash id="f9r2xm"
-cd ../template
-```
-
-Build:
-
-```bash id="d5k8wp"
-docker build -t template:latest .
-```
-
-Load:
-
-```bash id="g7n4ql"
-kind load docker-image template:latest
-```
-
----
-
-# 9. Apply Kubernetes Files
-
-Go project root:
-
-```bash id="w1m6tz"
-cd /workspaces/codespaces-blank/sandbox-service
-```
-
-Apply RBAC:
-
-```bash id="x8p3vn"
-kubectl apply -f k8s/rbac.yml
-```
-
-Apply k8s:
-
-```bash id="r2q7lf"
+```bash id="8x6t3p"
 kubectl apply -f k8s/
 ```
 
 ---
 
-# 10. Watch Pods
+## 6. Check Pods
 
-```bash id="k5v9xm"
+```bash id="1n5w7q"
 kubectl get pods -w
 ```
 
 Wait until:
 
-```txt id="m4n8rp"
-1/1 Running
-```
+* router-deployment Running
+* sandbox-deployment Running
 
 ---
 
-# 11. Start Port Forward
+## 7. Forward Router Port
 
-```bash id="u7q2wk"
-kubectl port-forward service/sandbox-service 3000:80 --address 0.0.0.0
+```bash id="9p4m2x"
+kubectl port-forward svc/router-service 3000:80 --address 0.0.0.0
 ```
 
 KEEP THIS TERMINAL OPEN.
 
 ---
 
-# 12. Test Backend
+# NEW TERMINAL
 
-New terminal:
+## 8. Create Sandbox
 
-```bash id="s3m6vp"
-curl http://localhost:3000/api/sandbox/health
-```
-
-Expected:
-
-```json id="j9r4xt"
-{"message":"Sandbox API is healthy","status":"ok"}
-```
-
----
-
-# 13. Start Sandbox Dynamically
-
-```bash id="f1q8zn"
+```bash id="4z8v1k"
 curl -X POST http://localhost:3000/api/sandbox/start
 ```
 
----
+Copy:
 
-# 14. Check Dynamic Pods
-
-```bash id="v6m2rk"
-kubectl get pods
-```
+* sandboxId
+* previewUrl
 
 ---
 
-# BEFORE CLOSING CODESPACE
+## 9. Open Preview
 
-# 1. Stop Port Forward
-
-Press:
-
-```txt id="p7k3wl"
-CTRL + C
+```txt id="7c2n5m"
+https://YOUR_CODESPACE-3000.app.github.dev/preview/SANDBOX_ID/
 ```
 
 ---
 
-# 2. Delete Dynamic Sandbox Pods
+# DEBUG COMMANDS
 
-```bash id="z2v9qm"
-kubectl delete pod -l app=sandbox
-```
+## Live Pod Logs
 
-OR delete specific pods.
-
----
-
-# 3. Delete Dynamic Services
-
-```bash id="m8r1xp"
-kubectl delete svc -l app=sandbox
+```bash id="5v7x0q"
+kubectl logs -f sandbox-pod-SANDBOX_ID -c sandbox-preview
 ```
 
 ---
 
-# 4. Optional — Delete Cluster
+## Agent Logs
 
-If you want clean restart next day:
-
-```bash id="n3q7vk"
-kind delete cluster
+```bash id="6m3k9r"
+kubectl logs -f sandbox-pod-SANDBOX_ID -c agent
 ```
 
 ---
 
-# 5. Commit Important Code
+## Router Logs
 
-```bash id="w5m2lf"
-git add .
-git commit -m "progress update"
-git push
+```bash id="0x2p8v"
+kubectl logs -f deploy/router-deployment
 ```
 
 ---
 
-# NEXT DAY QUICK START
+## Check Services
 
-If cluster still exists:
-
-```bash id="c8r4zn"
-kubectl get nodes
+```bash id="8w1m6n"
+kubectl get svc
 ```
 
-Then directly:
+---
 
-```bash id="q1m7xp"
-kubectl apply -f k8s/
-kubectl port-forward service/sandbox-service 3000:80 --address 0.0.0.0
+## Check Sandbox HTML From Router
+
+```bash id="9q4v7x"
+kubectl exec -it deploy/router-deployment -- wget -qO- http://sandbox-service-SANDBOX_ID
 ```
 
-No need to reinstall everything.
+---
+
+## Delete All Sandbox Pods
+
+```bash id="2m7x9p"
+kubectl delete pod -l app=sandbox-instance
+```
+
+---
+
+## Delete All Sandbox Services
+
+```bash id="1v4n8q"
+kubectl delete svc -l app=sandbox-instance
+```
+
+---
+
+# IMPORTANT
+
+Router port-forward terminal MUST stay open.
+
+Without this:
+
+* `/start` will fail
+* preview URLs will fail
+* Codespaces browser preview will fail

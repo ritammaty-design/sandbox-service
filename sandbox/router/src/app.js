@@ -40,9 +40,6 @@ function getPreviewProxy(sandboxId) {
             changeOrigin: true,
             ws: true,
             xfwd: true,
-            pathRewrite: {
-                [`^/preview/${sandboxId}`]: ""
-            },
             on: {
                 error(error, req, res) {
                     console.error("preview proxy error:", error.message);
