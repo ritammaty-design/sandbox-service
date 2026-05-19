@@ -20,6 +20,17 @@ function isValidSandboxId(sandboxId) {
     return sandboxId.length <= 63 && sandboxIdPattern.test(sandboxId);
 }
 
+function getSandboxIdFromPreviewUrl(url) {
+    const { pathname } = new URL(url, "http://router.local");
+    const [, previewPrefix, sandboxId] = pathname.split("/");
+
+    if (previewPrefix !== "preview" || !sandboxId || !isValidSandboxId(sandboxId)) {
+        return null;
+    }
+
+    return sandboxId;
+}
+
 function getPreviewProxy(sandboxId) {
     if (!previewProxies.has(sandboxId)) {
         const target = `http://sandbox-service-${sandboxId}/preview/${sandboxId}`;
@@ -28,6 +39,7 @@ function getPreviewProxy(sandboxId) {
             target,
             changeOrigin: true,
             ws: true,
+            xfwd: true,
             pathRewrite: {
                 [`^/preview/${sandboxId}`]: ""
             },
@@ -48,6 +60,17 @@ function getPreviewProxy(sandboxId) {
     }
 
     return previewProxies.get(sandboxId);
+}
+
+export function handlePreviewUpgrade(req, socket, head) {
+    const sandboxId = getSandboxIdFromPreviewUrl(req.url);
+
+    if (!sandboxId) {
+        socket.destroy();
+        return;
+    }
+
+    getPreviewProxy(sandboxId).upgrade(req, socket, head);
 }
 
 app.use("/preview/:sandboxId", (req, res, next) => {

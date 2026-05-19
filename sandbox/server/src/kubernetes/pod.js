@@ -12,7 +12,18 @@ function sandboxLabels(sandboxId) {
 export async function createPod(sandboxId) {
     const podName = `sandbox-pod-${sandboxId}`;
 
-    const podManifest = {
+    const podManifest = createSandboxPodManifest(sandboxId, podName);
+
+    await k8sCoreV1Api.createNamespacedPod({
+        namespace,
+        body: podManifest
+    });
+
+    return podName;
+}
+
+export function createSandboxPodManifest(sandboxId, podName = `sandbox-pod-${sandboxId}`) {
+    return {
         metadata: {
             name: podName,
             labels: sandboxLabels(sandboxId)
@@ -32,11 +43,10 @@ export async function createPod(sandboxId) {
                     command: [
                         "sh",
                         "-c",
-                        "cp -r /app/src /workspace/ && \
-   cp -r /app/public /workspace/ 2>/dev/null || true && \
-   cp /app/package.json /workspace/ && \
-   cp /app/package-lock.json /workspace/ 2>/dev/null || true && \
-   cp /app/vite.config.js /workspace/"
+                        "mkdir -p /workspace/src && \
+cp -r /app/src/. /workspace/src/ && \
+mkdir -p /workspace/public && \
+cp -r /app/public/. /workspace/public/ 2>/dev/null || true"
                     ],
                     volumeMounts: [
                         {
@@ -51,7 +61,7 @@ export async function createPod(sandboxId) {
                     name: "sandbox-preview",
                     image: "template:latest",
                     imagePullPolicy: "Never",
-                    workingDir: "/workspace",
+                    workingDir: "/app",
                     command: ["npm"],
                     args: ["run", "dev", "--", "--host", "0.0.0.0"],
                     env: [
@@ -87,7 +97,13 @@ export async function createPod(sandboxId) {
                     volumeMounts: [
                         {
                             name: "workspace-volume",
-                            mountPath: "/workspace"
+                            mountPath: "/app/src",
+                            subPath: "src"
+                        },
+                        {
+                            name: "workspace-volume",
+                            mountPath: "/app/public",
+                            subPath: "public"
                         }
                     ]
                 },
@@ -130,13 +146,6 @@ export async function createPod(sandboxId) {
             ]
         }
     };
-
-    await k8sCoreV1Api.createNamespacedPod({
-        namespace,
-        body: podManifest
-    });
-
-    return podName;
 }
 
 export async function waitForPodReady(podName, timeoutMs = 120000) {
