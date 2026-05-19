@@ -40,14 +40,17 @@ export function createSandboxPodManifest(sandboxId, podName = `sandbox-pod-${san
                     name: "copy-template",
                     image: "template:latest",
                     imagePullPolicy: "Never",
-                    command: [
-                        "sh",
-                        "-c",
-                        "mkdir -p /workspace/src && \
-cp -r /app/src/. /workspace/src/ && \
-mkdir -p /workspace/public && \
-cp -r /app/public/. /workspace/public/ 2>/dev/null || true"
-                    ],
+                    command: ["sh", "-ec"],
+                    args: [`
+set -eu
+mkdir -p /workspace/src /workspace/public
+cp -r /app/src/. /workspace/src/
+cp /app/index.html /workspace/index.html
+cp /app/vite.config.js /workspace/vite.config.js
+if [ -d /app/public ]; then
+    cp -r /app/public/. /workspace/public/ 2>/dev/null || true
+fi
+                    `],
                     volumeMounts: [
                         {
                             name: "workspace-volume",
@@ -84,6 +87,24 @@ cp -r /app/public/. /workspace/public/ 2>/dev/null || true"
                             name: "preview-http"
                         }
                     ],
+                    startupProbe: {
+                        httpGet: {
+                            path: `/preview/${sandboxId}/`,
+                            port: "preview-http"
+                        },
+                        failureThreshold: 30,
+                        periodSeconds: 2,
+                        timeoutSeconds: 2
+                    },
+                    readinessProbe: {
+                        httpGet: {
+                            path: `/preview/${sandboxId}/`,
+                            port: "preview-http"
+                        },
+                        failureThreshold: 3,
+                        periodSeconds: 2,
+                        timeoutSeconds: 2
+                    },
                     resources: {
                         limits: {
                             memory: "256Mi",
@@ -95,6 +116,16 @@ cp -r /app/public/. /workspace/public/ 2>/dev/null || true"
                         }
                     },
                     volumeMounts: [
+                        {
+                            name: "workspace-volume",
+                            mountPath: "/app/index.html",
+                            subPath: "index.html"
+                        },
+                        {
+                            name: "workspace-volume",
+                            mountPath: "/app/vite.config.js",
+                            subPath: "vite.config.js"
+                        },
                         {
                             name: "workspace-volume",
                             mountPath: "/app/src",
@@ -126,6 +157,24 @@ cp -r /app/public/. /workspace/public/ 2>/dev/null || true"
                             name: "agent-http"
                         }
                     ],
+                    startupProbe: {
+                        httpGet: {
+                            path: "/",
+                            port: "agent-http"
+                        },
+                        failureThreshold: 30,
+                        periodSeconds: 2,
+                        timeoutSeconds: 2
+                    },
+                    readinessProbe: {
+                        httpGet: {
+                            path: "/",
+                            port: "agent-http"
+                        },
+                        failureThreshold: 3,
+                        periodSeconds: 2,
+                        timeoutSeconds: 2
+                    },
                     resources: {
                         limits: {
                             memory: "256Mi",

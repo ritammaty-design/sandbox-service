@@ -5,17 +5,17 @@ import path from "node:path";
 
 const app = express();
 const WORKSPACE_DIR = process.env.WORKSPACE_DIR || "/workspace";
+const WORKSPACE_ROOT = path.resolve(WORKSPACE_DIR);
 
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 
 function resolveWorkspacePath(requestedPath = ".") {
-    const safePath = String(requestedPath || ".")
-        .replaceAll("\\", "/")
-        .replace(/^\/+/, "");
-
-    const targetPath = path.resolve(WORKSPACE_DIR, safePath);
-    const relativePath = path.relative(WORKSPACE_DIR, targetPath);
+    const rawPath = String(requestedPath || ".").replaceAll("\\", "/");
+    const targetPath = path.isAbsolute(rawPath)
+        ? path.normalize(rawPath)
+        : path.resolve(WORKSPACE_ROOT, rawPath);
+    const relativePath = path.relative(WORKSPACE_ROOT, targetPath);
 
     if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
         const error = new Error("Path must stay inside /workspace");
@@ -27,13 +27,37 @@ function resolveWorkspacePath(requestedPath = ".") {
 }
 
 function toWorkspacePath(absolutePath) {
-    const relativePath = path.relative(WORKSPACE_DIR, absolutePath);
+    const relativePath = path.relative(WORKSPACE_ROOT, absolutePath);
+
+    if (!relativePath) {
+        return ".";
+    }
+
     return relativePath.split(path.sep).join("/");
+}
+
+function markMissingPath(error, message) {
+    if (error?.code === "ENOENT") {
+        error.statusCode = 404;
+        error.message = message;
+    }
+
+    return error;
 }
 
 async function describeEntry(parentPath, entry) {
     const absolutePath = path.join(parentPath, entry.name);
-    const stats = await fs.stat(absolutePath);
+    let stats;
+
+    try {
+        stats = await fs.stat(absolutePath);
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return null;
+        }
+
+        throw error;
+    }
 
     return {
         name: entry.name,
@@ -54,14 +78,20 @@ function handleError(error, res) {
 
 async function listFiles(requestedPath) {
     const directoryPath = resolveWorkspacePath(requestedPath);
-    const entries = await fs.readdir(directoryPath, { withFileTypes: true });
-    const files = await Promise.all(
-        entries.map(entry => describeEntry(directoryPath, entry))
-    );
+
+    let entries;
+
+    try {
+        entries = await fs.readdir(directoryPath, { withFileTypes: true });
+    } catch (error) {
+        throw markMissingPath(error, "Directory not found");
+    }
+
+    const files = await Promise.all(entries.map(entry => describeEntry(directoryPath, entry)));
 
     return {
         path: toWorkspacePath(directoryPath),
-        files
+        files: files.filter(Boolean)
     };
 }
 
@@ -87,7 +117,13 @@ app.get("/read", async (req, res) => {
         }
 
         const filePath = resolveWorkspacePath(req.query.path);
-        const content = await fs.readFile(filePath, "utf8");
+        let content;
+
+        try {
+            content = await fs.readFile(filePath, "utf8");
+        } catch (error) {
+            throw markMissingPath(error, "File not found");
+        }
 
         return res.status(200).json({
             path: toWorkspacePath(filePath),
@@ -100,7 +136,8 @@ app.get("/read", async (req, res) => {
 
 app.post("/write", async (req, res) => {
     try {
-        const { path: requestedPath, content = "" } = req.body;
+        const body = req.body && typeof req.body === "object" ? req.body : {};
+        const { path: requestedPath, content = "" } = body;
 
         if (!requestedPath) {
             return res.status(400).json({ error: "Missing path in request body" });
@@ -121,12 +158,13 @@ app.post("/write", async (req, res) => {
 
 app.post("/create", async (req, res) => {
     try {
+        const body = req.body && typeof req.body === "object" ? req.body : {};
         const {
             path: requestedPath,
             type = "file",
             content = "",
             overwrite = false
-        } = req.body;
+        } = body;
 
         if (!requestedPath) {
             return res.status(400).json({ error: "Missing path in request body" });
