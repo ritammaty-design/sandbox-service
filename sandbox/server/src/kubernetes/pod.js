@@ -29,7 +29,15 @@ export async function createPod(sandboxId) {
                     name: "copy-template",
                     image: "template:latest",
                     imagePullPolicy: "Never",
-                    command: ["sh", "-c", "cp -a /app/. /workspace/"],
+                    command: [
+                        "sh",
+                        "-c",
+                        "cp -r /app/src /workspace/ && \
+   cp -r /app/public /workspace/ 2>/dev/null || true && \
+   cp /app/package.json /workspace/ && \
+   cp /app/package-lock.json /workspace/ 2>/dev/null || true && \
+   cp /app/vite.config.js /workspace/"
+                    ],
                     volumeMounts: [
                         {
                             name: "workspace-volume",
@@ -68,12 +76,12 @@ export async function createPod(sandboxId) {
                     ],
                     resources: {
                         limits: {
-                            memory: "1Gi",
-                            cpu: "500m"
+                            memory: "256Mi",
+                            cpu: "250m"
                         },
                         requests: {
-                            memory: "1Gi",
-                            cpu: "500m"
+                            memory: "128Mi",
+                            cpu: "100m"
                         }
                     },
                     volumeMounts: [
@@ -104,12 +112,12 @@ export async function createPod(sandboxId) {
                     ],
                     resources: {
                         limits: {
-                            memory: "1Gi",
-                            cpu: "500m"
+                            memory: "256Mi",
+                            cpu: "250m"
                         },
                         requests: {
-                            memory: "1Gi",
-                            cpu: "500m"
+                            memory: "128Mi",
+                            cpu: "100m"
                         }
                     },
                     volumeMounts: [
