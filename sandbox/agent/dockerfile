@@ -9,5 +9,8 @@ RUN npm install
 COPY . .
 
 EXPOSE 3000
-RUN mkdir /workspace
-CMD [ "node","server.js" ]
+ENV WORKSPACE_DIR=/workspace
+
+RUN mkdir -p /workspace
+
+CMD ["node", "/app/server.js"]

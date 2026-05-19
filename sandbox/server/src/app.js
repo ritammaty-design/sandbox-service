@@ -2,7 +2,7 @@ import express from 'express';
 import morgan from 'morgan';
 
 import { createPod, waitForPodReady } from './kubernetes/pod.js';
-import { createService } from './kubernetes/service.js';
+import { createSandboxServices } from './kubernetes/service.js';
 
 import { v7 as uuid } from 'uuid';
 
@@ -24,14 +24,17 @@ app.post('/api/sandbox/start', async (req, res) => {
 
         const podName = await createPod(sandboxId);
 
-        await createService(sandboxId);
+        await createSandboxServices(sandboxId);
 
         await waitForPodReady(podName);
 
         return res.status(200).json({
             message: 'Sandbox started',
             sandboxId,
-            previewUrl: `/preview/${sandboxId}`
+            podName,
+            previewService: `sandbox-service-${sandboxId}`,
+            agentService: `agent-service-${sandboxId}`,
+            previewUrl: `/preview/${sandboxId}/`
         });
 
     } catch (error) {

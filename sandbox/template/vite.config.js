@@ -1,12 +1,18 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-
-  base: './',
+  base: process.env.VITE_BASE || "./",
   server: {
-    host: '0.0.0.0', // 👈 Crucial: Allows Kubernetes to route traffic to Vite
-    port: 5173,      // 👈 Keeps it on the port you exposed
+    host: "0.0.0.0",
+    port: 5173,
+    strictPort: true,
+    hmr: false,
+    allowedHosts: true,
+    watch: {
+      usePolling: true,
+      interval: 100
+    }
   }
-})
+});

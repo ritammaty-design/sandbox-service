@@ -1,40 +1,76 @@
 import { k8sCoreV1Api } from "./config.js";
 
-export async function createService(sandboxId) {
+const namespace = "default";
 
-    const serviceManifest = {
+function sandboxLabels(sandboxId) {
+    return {
+        app: "sandbox-instance",
+        sandboxId
+    };
+}
+
+function createServiceManifest({ name, sandboxId, ports }) {
+    return {
         metadata: {
-            name: `sandbox-service-${sandboxId}`,
-
-            labels: {
-                app: "sandbox-instance",
-                sandboxId: sandboxId
-            }
+            name,
+            labels: sandboxLabels(sandboxId)
         },
-
         spec: {
-            selector: {
-                app: "sandbox-instance",
-                sandboxId: sandboxId
-            },
-
-            ports: [
-                {
-                    port: 80,
-                    targetPort: 5173,
-                    protocol: "TCP",
-                    name: "http"
-                }
-            ],
-
+            selector: sandboxLabels(sandboxId),
+            ports,
             type: "ClusterIP"
         }
     };
+}
 
-    const response = await k8sCoreV1Api.createNamespacedService({
-        namespace: "default",
-        body: serviceManifest
+export async function createPreviewService(sandboxId) {
+    const serviceManifest = createServiceManifest({
+        name: `sandbox-service-${sandboxId}`,
+        sandboxId,
+        ports: [
+            {
+                port: 80,
+                targetPort: 5173,
+                protocol: "TCP",
+                name: "preview-http"
+            }
+        ]
     });
 
-    return response;
+    return k8sCoreV1Api.createNamespacedService({
+        namespace,
+        body: serviceManifest
+    });
+}
+
+export async function createAgentService(sandboxId) {
+    const serviceManifest = createServiceManifest({
+        name: `agent-service-${sandboxId}`,
+        sandboxId,
+        ports: [
+            {
+                port: 3000,
+                targetPort: 3000,
+                protocol: "TCP",
+                name: "agent-http"
+            }
+        ]
+    });
+
+    return k8sCoreV1Api.createNamespacedService({
+        namespace,
+        body: serviceManifest
+    });
+}
+
+export async function createSandboxServices(sandboxId) {
+    const [previewService, agentService] = await Promise.all([
+        createPreviewService(sandboxId),
+        createAgentService(sandboxId)
+    ]);
+
+    return {
+        previewService,
+        agentService
+    };
 }

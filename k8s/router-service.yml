@@ -1,12 +1,12 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name:  router-service
+  name: router-service
 spec:
   selector:
-    app:  router
-  type:  ClusterIP
+    app: router
+  type: ClusterIP
   ports:
-  - name:  name-of-the-port
-    port:  80
-    targetPort:  3000
+  - name: http
+    port: 80
+    targetPort: 3000
